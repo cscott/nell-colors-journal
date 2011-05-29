@@ -7,22 +7,21 @@ var apejs = {
         var httpMethod = request.getMethod().toLowerCase();
 
         // before running the http verb method run the before handler
-        if(this.before)
+        if (typeof this.before == "function") {
             this.before(request, response);
-
-        var matchedUrl = false;
-        for(var i in this.urls) {
-            var regex = "^"+i+"/?$";
-            var matches = path.match(new RegExp(regex));
-            if(matches && matches.length) { // matched!
-                this.urls[i][httpMethod](request, response, matches);
-                matchedUrl = true;
-                break; // we found it, stop searching
-            }
         }
 
-        if(!matchedUrl)
-            return response.sendError(response.SC_NOT_FOUND);
+        for (var i in this.urls) {
+            var regex = "^"+i+"/?$";
+            var matches = path.match(new RegExp(regex));
+            if (matches && matches.length) {
+                this.urls[i][httpMethod](request, response, matches);
+                return; // we found it, stop searching
+            }
+        }
+        
+        // there was no matching url
+        return response.sendError(response.SC_NOT_FOUND);
     }
 };
 exports = apejs;
