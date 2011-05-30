@@ -88,8 +88,8 @@ require CommonJS modules and they should work.
 
 ## Google Datastore
 
-I'm trying to implement a really basic abstraction around the low-level Google
-datastore API. You can read the code under `WEB-INF/modules/googlestore.js`.
+ApeJS provides a basic abstraction around the low-level Google datastore API. 
+You can read the code under `WEB-INF/modules/googlestore.js`.
 In order to work with the datastore, first you need to include it in your file.
 
     var googlestore = require("googlestore.js");
