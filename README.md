@@ -97,7 +97,7 @@ In order to work with the datastore, first you need to include it in your file.
 To create an *entity* and store it in the datastore you do:
 
     // save an entity to the datastore
-    var e = googlestore.put("person", {
+    googlestore.put("person", {
         "name": "Luca",
         "age": 25,
         "gender": "female",
