@@ -96,24 +96,19 @@ In order to work with the datastore, first you need to include it in your file.
 
 To create an *entity* and store it in the datastore you do:
 
-    var e = googlestore.entity("person", {
+    // save an entity to the datastore
+    var e = googlestore.put("person", {
         "name": "Luca",
         "age": 25,
         "gender": "female",
         "nationality": "Italian"
     });
 
-    // save the entity to the datastore
-    var key = googlestore.put(e);
-
 You get an *entity* from the datastore by using a key:
 
-    // creating a key by ID
-    var key = googlestore.createKey("person", 15);
-
-    // get the entity from the datastore
-    var person = googlestore.get(key);
-
+    // get an entity from the datastore by ID
+    var person = googlestore.get("person", 15);
+    
 Listing more *entities* is done by using a query:
 
     // selecting youngest 5 adult males as an array
