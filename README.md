@@ -94,9 +94,8 @@ In order to work with the datastore, first you need to include it in your file.
 
     var googlestore = require("googlestore.js");
 
-To create an *entity* and store it in the datastore you do:
+Insert an *entity* to the datastore is easy:
 
-    // save an entity to the datastore
     googlestore.put("person", {
         "name": "Luca",
         "age": 25,
@@ -104,9 +103,8 @@ To create an *entity* and store it in the datastore you do:
         "nationality": "Italian"
     });
 
-You get an *entity* from the datastore by using a key:
+You get an *entity* from the datastore by ID:
 
-    // get an entity from the datastore by ID
     var person = googlestore.get("person", 15);
     
 Listing more *entities* is done by using a query:
