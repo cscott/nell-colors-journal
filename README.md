@@ -103,7 +103,7 @@ Insert an *entity* to the datastore is easy:
         "nationality": "Italian"
     });
 
-You get an *entity* from the datastore by ID:
+You can get an *entity* from the datastore by ID or keyName:
 
     var person = googlestore.get("person", 15);
     
