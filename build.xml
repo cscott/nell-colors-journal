@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="apejs" basedir="." default="none">
+<project name="nell-colors-journal" basedir="." default="none">
 <description>
-A tiny JavaScript web framework targeted for
-Google App Engine (http://code.google.com/appengine).
+This is a very simple server side component to sync/save drawings from
+Colors for Nell (http://github.com/cscott/nell-colors).
+
+It is based on apejs (http://lmatteis.github.com/apejs/), a tiny Javascript
+framework for Google App Engine.
 
 </description>
 <!-- package name is also google appengine task name; change if you fork -->
-<property name="package" value="apejs" />
+<property name="package" value="nell-colors-journal" />
 <!-- change version # here; all other locations inherit from this -->
 <property name="version" value="1" />
 
