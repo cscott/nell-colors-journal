@@ -76,7 +76,7 @@ var googlestore = (function(){
         // (kind, [opt] keyId/keyName)
         del: function(arg0, arg1) {
             var key = arg1 ? KeyFactory.createKey(arg0, arg1) : arg0;
-            this.datastore["delete"](key);
+            this.datastore["delete"].call(this.datastore, key);
         },
         query: function(kind) {
             var q = new Query(kind);

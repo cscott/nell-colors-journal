@@ -188,7 +188,7 @@ select.fn = {
         for(var i=0; i<result.length; i++) {
             var ent = result[i];
             // XXX should do bulk delete
-            this.datastore["delete"](ent.getKey());
+            this.datastore["delete"].call(this.datastore, ent.getKey());
         }
     },
 
