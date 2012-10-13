@@ -128,5 +128,11 @@ Finally, there are a couple of **key points** to keep in mind when using the *Da
 
 http://code.google.com/appengine/docs/java/datastore/queries.html
 
+## selectjs.com
+
+There is also an implementation of the database interface
+introducted by [selectjs.com](http://selectjs.com).  Documentation
+is available at that site.  The `main.js` demo in apejs demonstrates
+the usage of the `select` module's API.
 
 *More to come ...*
