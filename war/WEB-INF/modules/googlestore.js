@@ -28,12 +28,17 @@ var googlestore = (function(){
 
     return {
         datastore: DatastoreServiceFactory.getDatastoreService(),
+        // shortcut, from com.google.appengine.api.datastore
+        EntityNotFoundException: EntityNotFoundException,
 
         // creates a new entity
         // (kind, [opt] keyName/keyId, [opt] properties)
-        entity: function(arg0, arg1, arg2) {
+        entity: function(arg0, arg1, arg2, arg3) {
             var data, entity;
-            if (arg2) {
+            if (arg3) {
+                entity = new Entity(arg0, arg1, arg2);
+                data = arg3;
+            } else if (arg2) {
                 entity = new Entity(arg0, arg1);
                 data = arg2;
             } else {
@@ -94,9 +99,17 @@ var googlestore = (function(){
                 q.addSort(propertyName, Query.SortDirection[direction]);
                 return self;
             }
+            function setAncestor(key) {
+                q.setAncestor(key);
+                return self;
+            }
             function setKeysOnly() {
                 q.setKeysOnly();
                 return self;
+            }
+            function startCursor(cursorString) {
+                options = options.startCursor(Cursor.
+                                              fromWebSafeString(cursorString));
             }
             function limit(limit) {
                 options = options.limit(limit);
@@ -135,7 +148,7 @@ var googlestore = (function(){
             function fetchAsIterable(num) {
                 if (num) limit(num);
                 var preparedQuery = googlestore.datastore.prepare(q);
-                return preparedQuery.asIterable(options);
+                return preparedQuery.asQueryResultIterable(options);
             }
             function count() {
                 var preparedQuery = googlestore.datastore.prepare(q);
@@ -144,7 +157,9 @@ var googlestore = (function(){
             self = {
                 filter : filter,
                 sort   : sort,
+                setAncestor: setAncestor,
                 setKeysOnly: setKeysOnly,
+                startCursor: startCursor,
                 limit  : limit,
                 offset : offset,
                 setCacheKey: setCacheKey,
@@ -155,8 +170,13 @@ var googlestore = (function(){
             return self;
         },
         // abstracting everything as possible
-        createKey: function(kind, id) {
-            return KeyFactory.createKey(kind, id);
+        createKey: function(arg0, arg1, arg2) {
+            if (arguments.length === 3) {
+                return KeyFactory.createKey(arg0/*parent*/,
+                                            arg1/*kind*/, arg2/*id*/);
+            } else {
+                return KeyFactory.createKey(arg0/*kind*/, arg1/*id*/);
+            }
         },
 
         /**
