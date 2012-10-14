@@ -11,6 +11,16 @@ Value: <input type='text' name='value'/><br>
 <input type='submit' />
 </form>
 
+<h2>putif</h2>
+<form method='post' action='/putif/{{uuid}}'>
+User UUID: {{uuid}}<br>
+Database: <input type='text' name='dbname'/><br>
+Key: <input type='text' name='key'/><br>
+Value: <input type='text' name='value'/><br>
+Version: <input type='text' name='version'/><br>
+<input type='submit' />
+</form>
+
 <h2>get</h2>
 <form method='get' action='/get/{{uuid}}'>
 User UUID: {{uuid}}<br>
@@ -25,6 +35,33 @@ Key: <input type='text' name='key'/><br>
 User UUID: {{uuid}}<br>
 Database: <input type='text' name='dbname'/><br>
 Key: <input type='text' name='key'/><br>
+<input type='hidden' name='callback' value='jsonp=' />
+<input type='submit' />
+</form>
+
+<h2>keys</h2>
+<form method='get' action='/keys/{{uuid}}'>
+User UUID: {{uuid}}<br>
+Database: <input type='text' name='dbname'/><br>
+Cursor: <input type='text' name='cursor'/><br>
+<input type='hidden' name='callback' value='jsonp=' />
+<input type='submit' />
+</form>
+
+<h2>list</h2>
+<form method='get' action='/list/{{uuid}}'>
+User UUID: {{uuid}}<br>
+Database: <input type='text' name='dbname'/><br>
+Cursor: <input type='text' name='cursor'/><br>
+<input type='hidden' name='callback' value='jsonp=' />
+<input type='submit' />
+</form>
+
+<h2>nuke</h2>
+<form method='post' action='/nuke/{{uuid}}'>
+User UUID: {{uuid}}<br>
+Database: <input type='text' name='dbname'/><br>
+Cursor: <input type='text' name='cursor'/><br>
 <input type='hidden' name='callback' value='jsonp=' />
 <input type='submit' />
 </form>

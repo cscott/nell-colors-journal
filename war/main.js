@@ -1,9 +1,10 @@
 var apejs = require("apejs.js");
 var console = require("console.js");
 var googlestore = require("googlestore.js");
-var version = require("version.js");
-
+var nell_version = require("version.js");
 var mustache = require("./common/mustache.js");
+
+var Text = com.google.appengine.api.datastore.Text;
 
 var CORSHosts = [
     'http://nell-colors.github.cscott.net',
@@ -34,8 +35,13 @@ var ajaxResponse = function(response, callback) {
     };
 };
 var makeUserDbKey = function(uuid, dbname) {
-    var userKey = googlestore.createKey("User", uuid);
-    var dbKey = googlestore.createKey(userKey, "Database", dbname);
+    var userKey, dbKey;
+    if (uuid==='*') {
+        dbKey = googlestore.createKey("Database", dbname);
+    } else {
+        userKey = googlestore.createKey("User", uuid);
+        dbKey = googlestore.createKey(userKey, "Database", dbname);
+    }
     return dbKey;
 };
 var makeUserDbItemKey = function(uuid, dbname, key) {
@@ -46,13 +52,15 @@ var makeUserDbItemKey = function(uuid, dbname, key) {
 
 apejs.urls = {
     "/version": {
+        // return version of this nell-colors-journal code
         get: function(request, response, matches) {
             var p = param(request);
             var callback = p("callback"); // JSONP (optional)
-            ajaxResponse(response, callback).write(version);
+            ajaxResponse(response, callback).write(nell_version);
         }
     },
-    "/(get|exists)/([a-zA-Z0-9_-]+)": {
+    /* don't necessarily need to know the user id in order to GET */
+    "/(get|exists)/([a-zA-Z0-9_-]+|[*])": {
         get: function(request, response, matches) {
             var getOrExists = matches[1];
             var uuid = matches[2];
@@ -73,13 +81,20 @@ apejs.urls = {
             }
             var result;
             if (getOrExists==='get') {
-                result = item ? JSON.parse(item.getProperty('value')) : null;
+                result = item ? {
+                    // note we must convert Java string to JavaScript strings
+                    // for key, version, and value (via Text.getValue())
+                    key: ''+key,
+                    value: ''+item.getProperty('value').getValue(),
+                    version: ''+item.getProperty('version')
+                } : null;
             } else { // exists
                 result = found;
             }
             ajaxResponse(response, callback).write(result);
         }
     },
+    /* require UUID in order to modify or delete an item */
     "/(put|delete)/([a-zA-Z0-9_-]+)": {
         post: function(request, response, matches) {
             var putOrDelete = matches[1];
@@ -88,20 +103,75 @@ apejs.urls = {
             var dbname = p("dbname");
             var key = p("key");
             var value = p("value"); // missing for delete, obviously
-            var entity;
+            var item, result;
 
             // put or delete
             if (putOrDelete==='put') {
-                JSON.parse(value); // validate.
-                entity = googlestore.entity("Item", key,
-                                            makeUserDbKey(uuid, dbname), {
-                    value: value
-                });
-                googlestore.put(entity);
+                var newVersion = java.util.UUID.randomUUID().toString();
+                item = googlestore.entity("Item", key,
+                                          makeUserDbKey(uuid, dbname), {});
+                item.setUnindexedProperty('value', new Text(value));
+                item.setUnindexedProperty('version', newVersion);
+                googlestore.put(item);
+                result = {
+                    version: ''+newVersion // Java string -> JavaScript string
+                };
             } else { // delete
                 googlestore.del(makeUserDbItemKey(uuid, dbname, key));
+                result = true;
             }
-            ajaxResponse(response).write(true);
+            ajaxResponse(response).write(result);
+        }
+    },
+    "/putif/([a-zA-Z0-9_-]+)": {
+        post: function(request, response, matches) {
+            var uuid = matches[1];
+            var p = param(request);
+            var dbname = p("dbname");
+            var key = p("key");
+            var value = p("value");
+            var oldVersion = p("version");
+            var item, result, newVersion;
+
+            // put new value *iff* old value still has the given version.
+            // 'none' for old version means 'does not exist'
+            var txn = googlestore.datastore.beginTransaction();
+            try {
+                try {
+                    item = googlestore.get(makeUserDbItemKey(uuid,dbname,key));
+                    newVersion = item.getProperty('version');
+                } catch (e if e.javaException instanceof
+                         googlestore.EntityNotFoundException) {
+                    item = googlestore.entity("Item", key,
+                                              makeUserDbKey(uuid, dbname), {});
+                    newVersion = new java.lang.String('none');
+                }
+                if (!newVersion.equals(oldVersion)) { // Java Strings
+                    result = {
+                        success: false,
+                        reason: 'entity changed'
+                    };
+                } else {
+                    newVersion = java.util.UUID.randomUUID().toString();
+                    item.setUnindexedProperty("value", new Text(value));
+                    item.setUnindexedProperty("version", newVersion);
+                    googlestore.put(item);
+                    result = {
+                        success: true,
+                        version: ''+newVersion // Java string -> JavaScript
+                    };
+                }
+                txn.commit();
+            } finally {
+                if (txn.isActive()) {
+                    txn.rollback();
+                    result = {
+                        success: false,
+                        reason: 'transaction conflict'
+                    };
+                }
+            }
+            ajaxResponse(response).write(result);
         }
     },
     "/(keys|list)/([a-zA-Z0-9_-]+)": {
@@ -112,28 +182,36 @@ apejs.urls = {
             var dbname = p("dbname");
             var cursor = p("cursor"); // optional
             var callback = p("callback"); // JSONP (optional)
+            console.log('CSA cursor', cursor, 'callback', callback);
             // enumerate items
             var userDbKey = makeUserDbKey(uuid, dbname);
             var query = googlestore.query("Item").setAncestor(userDbKey);
             if (keysOrList==='keys') { query.setKeysOnly(); }
-            if (cursor) { query.startCursor(cursor); }
+            if (cursor && ''+cursor) { query.startCursor(cursor); }
             var resultIter = query.fetchAsIterable(BATCH_SIZE).iterator();
             var result = [], obj;
             while (resultIter.hasNext()) {
-                var entity = resultIter.next();
-                var key = entity.getKey().getName();
+                var item = resultIter.next();
+                var key = item.getKey().getName();
                 if (keysOrList==='keys') {
-                    obj = key;
+                    obj = ''+key; // convert to JavaScript string
                 } else {
-                    obj = JSON.parse(entity.getProperty('value'));
-                    obj.key = key;
+                    obj = {
+                        // convert from Java Strings to JavaScript
+                        // (see implementation of get, above)
+                        key: ''+key,
+                        value: ''+item.getProperty('value').getValue(),
+                        version: ''+item.getProperty('version')
+                    }
                 }
                 result.push(obj);
             }
-            var endCursor = resultIter.getCursor.toWebSafeString();
+            var endCursor = (result.length === BATCH_SIZE) ?
+                resultIter.getCursor().toWebSafeString() :
+                null;
 
             ajaxResponse(response, callback).write({
-                cursor: endCursor,
+                cursor: ''+endCursor,
                 result: result
             });
         }
@@ -147,16 +225,21 @@ apejs.urls = {
             var userDbKey = makeUserDbKey(uuid, dbname);
             var query = googlestore.query("Item").setAncestor(userDbKey);
             query.setKeysOnly();
-            if (cursor) { query.startCursor(cursor); }
+            if (cursor && ''+cursor) { query.startCursor(cursor); }
             var resultIter = query.fetchAsIterable(BATCH_SIZE).iterator();
+            var count = 0;
             while (resultIter.hasNext()) {
                 var entity = resultIter.next();
                 googlestore.del(entity.getKey());
+                count++;
             }
-            var endCursor = resultIter.getCursor.toWebSafeString();
+            var endCursor = (count === BATCH_SIZE) ?
+                resultIter.getCursor().toWebSafeString() :
+                null;
 
             ajaxResponse(response).write({
-                cursor: endCursor,
+                // indicate if we need to continue this operation
+                cursor: ''+endCursor
             });
         }
     },
@@ -166,8 +249,8 @@ apejs.urls = {
             var p = param(request);
 
             var html = mustache.to_html(render("skins/index.html"), {
-                package: version['package'],
-                version: version.number,
+                'package': nell_version['package'],
+                version: nell_version.number,
                 uuid: 'TESTME'
             });
             print(response).text(html);
