@@ -50,6 +50,19 @@ var makeUserDbItemKey = function(uuid, dbname, key) {
     return itemKey;
 };
 
+// ridiculous java-ese:
+var memcache = net.sf.jsr107cache.CacheManager.getInstance().getCacheFactory()
+    .createCache(java.util.Collections.emptyMap());
+
+var stringArray = function() {
+    var a = java.lang.reflect.Array.newInstance(java.lang.String,
+                                                arguments.length);
+    for (var i=0; i<arguments.length; i++) {
+        a[i] = arguments[i];
+    }
+    return a;
+};
+
 apejs.urls = {
     "/version": {
         // return version of this nell-colors-journal code
@@ -68,13 +81,36 @@ apejs.urls = {
             var dbname = p("dbname");
             var key = p("key");
             var callback = p("callback"); // JSONP (optional)
+            var resp = ajaxResponse(response, callback);
 
-            // fetch result
+            // first try memcache
+            var mkey, mval;
+            mkey = stringArray(uuid, dbname, key);
+            if (memcache.containsKey(mkey)) {
+                if (getOrExists==='get') {
+                    mval = memcache.get(mkey);
+                    result = {
+                        key: '' + key,
+                        value: '' + mval[0],
+                        version: '' + mval[1]
+                    };
+                    resp.write(result);
+                } else {
+                    resp.write(true);
+                }
+                return;
+            }
+
+            // fetch result "the hard way" from appengine.
             var itemKey = makeUserDbItemKey(uuid, dbname, key);
             var item=null, found=false;
             try {
                 item = googlestore.get(itemKey);
                 found = true;
+                // add to memcache
+                mval = stringArray(item.getProperty('value').getValue(),
+                                   item.getProperty('version'));
+                memcache.put(mkey, mval);
             } catch (e if e.javaException instanceof
                      googlestore.EntityNotFoundException) {
                 found = false;
@@ -91,7 +127,7 @@ apejs.urls = {
             } else { // exists
                 result = found;
             }
-            ajaxResponse(response, callback).write(result);
+            resp.write(result);
         }
     },
     /* require UUID in order to modify or delete an item */
@@ -104,6 +140,11 @@ apejs.urls = {
             var key = p("key");
             var value = p("value"); // missing for delete, obviously
             var item, result;
+
+            // remove this key from memcache, one way or the other
+            // (next get will stuff the new value back into memcache)
+            var mkey = stringArray(uuid, dbname, key);
+            memcache.remove(mkey);
 
             // put or delete
             if (putOrDelete==='put') {
@@ -133,6 +174,10 @@ apejs.urls = {
             var oldVersion = p("version");
             var item, result, newVersion;
 
+            // remove this key from memcache, one way or the other
+            // (next get will stuff the new value back into memcache)
+            var mkey = stringArray(uuid, dbname, key);
+            memcache.remove(mkey);
             // put new value *iff* old value still has the given version.
             // 'none' for old version means 'does not exist'
             var txn = googlestore.datastore.beginTransaction();
@@ -222,6 +267,7 @@ apejs.urls = {
             var p = param(request);
             var dbname = p("dbname");
             var cursor = p("cursor"); // optional
+            var mkey = stringArray(uuid, dbname, 'TBA');
             var userDbKey = makeUserDbKey(uuid, dbname);
             var query = googlestore.query("Item").setAncestor(userDbKey);
             query.setKeysOnly();
@@ -229,8 +275,13 @@ apejs.urls = {
             var resultIter = query.fetchAsIterable(BATCH_SIZE).iterator();
             var count = 0;
             while (resultIter.hasNext()) {
-                var entity = resultIter.next();
-                googlestore.del(entity.getKey());
+                var item = resultIter.next();
+                var key = item.getKey();
+                // remove from memcache
+                mkey[2] = key.getName();
+                memcache.remove(mkey);
+                // remove from datastore
+                googlestore.del(key);
                 count++;
             }
             var endCursor = (count === BATCH_SIZE) ?
