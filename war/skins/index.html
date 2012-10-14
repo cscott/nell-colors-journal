@@ -1,10 +1,30 @@
 <p align=right>{{package}} version {{version}}</p>
-<h1>Add person</h1>
-<form method='post'>
-Name: <input type='text' name='name'/><br>
-Age: <input type='text' name='age' /><br>
-Gender: <select name='gender'><option>male</option><option>female</option></select><br>
+
+<h1>Data store test</h1>
+
+<h2>put</h2>
+<form method='post' action='/put/{{uuid}}'>
+User UUID: {{uuid}}<br>
+Database: <input type='text' name='dbname'/><br>
+Key: <input type='text' name='key'/><br>
+Value: <input type='text' name='value'/><br>
 <input type='submit' />
 </form>
 
-See the other test page for <a href='/test'>filtering and sorting</a>.<br><br>
+<h2>get</h2>
+<form method='get' action='/get/{{uuid}}'>
+User UUID: {{uuid}}<br>
+Database: <input type='text' name='dbname'/><br>
+Key: <input type='text' name='key'/><br>
+<input type='hidden' name='callback' value='jsonp=' />
+<input type='submit' />
+</form>
+
+<h2>exists</h2>
+<form method='get' action='/exists/{{uuid}}'>
+User UUID: {{uuid}}<br>
+Database: <input type='text' name='dbname'/><br>
+Key: <input type='text' name='key'/><br>
+<input type='hidden' name='callback' value='jsonp=' />
+<input type='submit' />
+</form>
