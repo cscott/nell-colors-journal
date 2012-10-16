@@ -8,14 +8,38 @@ var Text = com.google.appengine.api.datastore.Text;
 
 var CORSHosts = [
     'http://nell-colors.github.cscott.net',
+    //'http://localhost:8001', // for local testing
     'http://dev.laptop.org'
 ];
 
 var BATCH_SIZE = 25; // items at a time.
 
+var ajaxCORSCheck = function(request, response) {
+    var origin = request.getHeader('Origin');
+    var i;
+    for (i=0; i<CORSHosts.length; i++) {
+        if (CORSHosts[i] === (''+origin)) {
+            response.setHeader('Access-Control-Allow-Origin', origin);
+            return true;
+        }
+    }
+    return false;
+};
+var handleCORSOptions = function() {
+    var methods = Array.prototype.splice.call(arguments, 0);
+    methods.push('OPTIONS');
+    return function(request, response) {
+        ajaxCORSCheck(request, response);
+        response.setHeader('Allow', methods.join(', '));
+        response.setHeader('Access-Control-Allow-Methods', methods.join(', '));
+        response.setHeader('Access-Control-Allow-Headers',
+                           'ORIGIN, X-REQUESTED-WITH');
+        response.setHeader('Content-Type', 'text/plain');
+        response.setDateHeader('Expires', java.lang.System.currentTimeMillis()+
+                               1000*60*60 /* 1 hour */);
+    };
+};
 var ajaxResponse = function(response, callback) {
-    response.addHeader('Access-Control-Allow-Origin',
-                       CORSHosts.join(' '));
     return {
         write: function(value) {
             var writer;
@@ -66,8 +90,10 @@ var stringArray = function() {
 
 apejs.urls = {
     "/version": {
+        options: handleCORSOptions('GET'),
         // return version of this nell-colors-journal code
         get: function(request, response, matches) {
+            ajaxCORSCheck(request, response);
             var p = param(request);
             var callback = p("callback"); // JSONP (optional)
             ajaxResponse(response, callback).write(nell_version);
@@ -75,7 +101,9 @@ apejs.urls = {
     },
     /* don't necessarily need to know the user id in order to GET */
     "/(get|exists)/([a-zA-Z0-9_-]+|[*])": {
+        options: handleCORSOptions('GET'),
         get: function(request, response, matches) {
+            ajaxCORSCheck(request, response);
             var getOrExists = matches[1];
             var uuid = matches[2];
             var p = param(request);
@@ -133,7 +161,9 @@ apejs.urls = {
     },
     /* require UUID in order to modify or delete an item */
     "/(put|delete)/([a-zA-Z0-9_-]+)": {
+        options: handleCORSOptions('POST'),
         post: function(request, response, matches) {
+            ajaxCORSCheck(request, response);
             var putOrDelete = matches[1];
             var uuid = matches[2];
             var p = param(request);
@@ -166,7 +196,9 @@ apejs.urls = {
         }
     },
     "/putif/([a-zA-Z0-9_-]+)": {
+        options: handleCORSOptions('POST'),
         post: function(request, response, matches) {
+            ajaxCORSCheck(request, response);
             var uuid = matches[1];
             var p = param(request);
             var dbname = p("dbname");
@@ -221,7 +253,9 @@ apejs.urls = {
         }
     },
     "/(keys|list)/([a-zA-Z0-9_-]+)": {
+        options: handleCORSOptions('GET'),
         get: function(request, response, matches) {
+            ajaxCORSCheck(request, response);
             var keysOrList = matches[1];
             var uuid = matches[2];
             var p = param(request);
@@ -262,7 +296,9 @@ apejs.urls = {
         }
     },
     "/nuke/([a-zA-Z0-9_-]+)": {
+        options: handleCORSOptions('POST'),
         post: function(request, response, matches) {
+            ajaxCORSCheck(request, response);
             var uuid = matches[1];
             var p = param(request);
             var dbname = p("dbname");
