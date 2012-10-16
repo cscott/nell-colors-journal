@@ -57,7 +57,8 @@ var memcache = net.sf.jsr107cache.CacheManager.getInstance().getCacheFactory()
 var stringArray = function() {
     var a = java.lang.reflect.Array.newInstance(java.lang.String,
                                                 arguments.length);
-    for (var i=0; i<arguments.length; i++) {
+    var i;
+    for (i=0; i<arguments.length; i++) {
         a[i] = arguments[i];
     }
     return a;
@@ -227,7 +228,6 @@ apejs.urls = {
             var dbname = p("dbname");
             var cursor = p("cursor"); // optional
             var callback = p("callback"); // JSONP (optional)
-            console.log('CSA cursor', cursor, 'callback', callback);
             // enumerate items
             var userDbKey = makeUserDbKey(uuid, dbname);
             var query = googlestore.query("Item").setAncestor(userDbKey);
@@ -256,7 +256,7 @@ apejs.urls = {
                 null;
 
             ajaxResponse(response, callback).write({
-                cursor: ''+endCursor,
+                cursor: endCursor ? (''+endCursor) : null,
                 result: result
             });
         }
@@ -290,7 +290,7 @@ apejs.urls = {
 
             ajaxResponse(response).write({
                 // indicate if we need to continue this operation
-                cursor: ''+endCursor
+                cursor: endCursor ? (''+endCursor) : null
             });
         }
     },
