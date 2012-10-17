@@ -115,7 +115,7 @@ apejs.urls = {
             // first try memcache
             var mkey, mval;
             mkey = stringArray(uuid, dbname, key);
-            if (memcache.containsKey(mkey)) {
+            if (uuid!=='*' && memcache.containsKey(mkey)) {
                 if (getOrExists==='get') {
                     mval = memcache.get(mkey);
                     result = {
@@ -133,13 +133,21 @@ apejs.urls = {
             // fetch result "the hard way" from appengine.
             var itemKey = makeUserDbItemKey(uuid, dbname, key);
             var item=null, found=false;
-            try {
+            if (uuid==='*') {
+                var query = googlestore.query("Item").
+                    filter("wild", '=', itemKey);
+                var result = query.fetch(1);
+                if (result.length) {
+                    item = result[0];
+                    found = true;
+                }
+            } else try {
                 item = googlestore.get(itemKey);
                 found = true;
                 // add to memcache
                 mval = stringArray(item.getProperty('value').getValue(),
                                    item.getProperty('version'));
-                memcache.put(mkey, mval);
+                if (uuid!=='*') { memcache.put(mkey, mval); }
             } catch (e if e.javaException instanceof
                      googlestore.EntityNotFoundException) {
                 found = false;
@@ -184,6 +192,8 @@ apejs.urls = {
                                           makeUserDbKey(uuid, dbname), {});
                 item.setUnindexedProperty('value', new Text(value));
                 item.setUnindexedProperty('version', newVersion);
+                // separate index to support wildcard-user gets.
+                item.setProperty('wild', makeUserDbItemKey('*', dbname, key));
                 googlestore.put(item);
                 result = {
                     version: ''+newVersion // Java string -> JavaScript string
